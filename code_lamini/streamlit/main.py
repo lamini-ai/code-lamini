@@ -21,7 +21,7 @@ def make_app(llm):
 
     answer = llm.get_answer(question)
 
-    streamlit.write("The current movie title is", title)
+    streamlit.write("The answer is", answer.answer)
 
 
 def build_llm():
