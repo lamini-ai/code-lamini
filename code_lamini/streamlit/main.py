@@ -1,8 +1,9 @@
 import streamlit
-
+import os
 from lamini import LLM, Type, Context, get_embedding
-
+import numpy as np
 import faiss
+from functools import lru_cache
 
 CONTEXT_SIZE = 10
 VECTOR_DIMENSION = 128
@@ -39,7 +40,7 @@ def build_index():
 
     embeddings = [get_embedding(data) for data in dataset]
 
-    faiss_index.add(embeddings)
+    faiss_index.add(np.array(embeddings, dtype=np.float32))
 
     index = {"faiss_index": faiss_index, "dataset": dataset}
 
@@ -63,10 +64,14 @@ class LLMPipeline:
     def __init__(self, index):
         self.llm = LLM(name="code-lamini")
         self.index = index
+    
+    @lru_cache(maxsize=1024)
+    def get_embedding_cached(self, text):
+        return get_embedding(text)
 
     def get_answer(self, question):
-        embedding = get_embedding(question)
-        distances, indices = self.index["faiss_index"].search(embedding, k=CONTEXT_SIZE)
+        embedding = self.get_embedding_cached(question)
+        distances, indices = self.index["faiss_index"].search(np.array([embedding], dtype=np.float32), k=CONTEXT_SIZE)
 
         similar_data = [self.index["dataset"][index] for index in indices]
 
